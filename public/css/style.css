@@ -1,0 +1,120 @@
+/* Navbar styling */
+.navbar {
+    background-color: #174ba4;
+}
+
+/* Mengubah warna teks navbar */
+.navbar .nav-link {
+    color: white !important;
+}
+
+/* Avatar styling */
+.avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #ddd; /* Placeholder jika tidak ada gambar */
+}
+
+/* Rotasi ikon panah saat dropdown aktif */
+.navbar .nav-link.show::after {
+    transform: rotate(180deg);
+}
+
+/* Dropdown menu awalnya disembunyikan */
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    background-color: white;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+}
+
+/* Efek hover pada item dropdown */
+.dropdown-menu .dropdown-item:hover {
+    background-color: #174ba4;
+    color: white;
+}
+
+/* Mengatur jarak dropdown agar tidak terlalu mepet */
+.nav-item.dropdown {
+    position: relative;
+}
+
+
+
+
+.menu-toggle {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.sidebar {
+    width: 250px;
+    height: 100vh;
+    background: #174ba4;
+    color: white;
+    position: fixed;
+    left: 0;
+    top: 0;
+    padding: 20px;
+    transition: all 0.3s ease-in-out;
+    overflow-x: hidden;
+    flex-direction: column;
+    justify-content: flex-start; 
+}
+
+.sidebar button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.sidebar a {
+    color: white;
+    text-decoration: none;
+    display: block;
+    padding: 10px;
+    padding: 12px 10px;
+    margin-bottom: 10px;
+}
+
+.sidebar a:hover {
+    background: #495057;
+}
+
+.submenu {
+    display: none;
+    padding-left: 20px;
+    margin-top: 5px;
+}
+
+.sidebar.collapsed {
+    width: 60px;
+}
+
+.sidebar.collapsed a {
+    text-align: center;
+    padding: 10px 5px;
+}
+
+.sidebar.collapsed .submenu {
+    display: none !important;
+}
+
+.toggle-menu::after {
+    content: " ▾";
+    font-size: 12px;
+}
+
+/* Sembunyikan saat sidebar dikecilkan */
+.sidebar.collapsed .toggle-menu::after {
+    display: none;
+}
