@@ -54,7 +54,7 @@ class DashboardController extends Controller
 
             // Mengambil data logs
             $logs = Elasticsearch::search([
-                'index' => 'flight5-2025.03.14*',  // Menggunakan pattern yang sesuai dengan logstash
+                'index' => 'flight5-2025.03.15*',  // Menggunakan pattern yang sesuai dengan logstash
                 'body' => [
                     'size' => 100,
                     'sort' => [
@@ -74,7 +74,7 @@ class DashboardController extends Controller
             ])->asArray();
 
             $httpMethodStats = Elasticsearch::search([
-                'index' => 'flight5-2025.03.14*',
+                'index' => 'flight5-2025.03.15*',
                 'body' => [
                     'size' => 0,
                     'aggs' => [
@@ -170,7 +170,7 @@ class DashboardController extends Controller
     {
         try {
             $stats = Elasticsearch::search([
-                'index' => 'flight5-2025.03.14*',
+                'index' => 'flight5-2025.03.15*',
                 'body' => [
                     'size' => 0,
                     'aggs' => [
@@ -205,7 +205,7 @@ class DashboardController extends Controller
     {
         try {
             $query = [
-                'index' => 'flight5-2025.03.14*',  // Menggunakan pattern yang sesuai
+                'index' => 'flight5-2025.03.15*',  // Menggunakan pattern yang sesuai
                 'body' => [
                     'size' => 100,
                     'sort' => [
