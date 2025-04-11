@@ -64,6 +64,20 @@
                     </div>
 
                     <div class="row">
+                        <!-- Memory Used in Bytes -->
+                        <div class="col-xl-4 col-lg-4">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-primary">Memory Used in Bytes</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="memoryBytesChart"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
                         <!-- HTTP Methods Chart -->
                         <div class="col-xl-4 col-lg-4">
                             <div class="card mb-4">
@@ -248,6 +262,7 @@
         let timelineChart;
         let cpuChart;
         let memoryChart;
+        let memoryBytesChart;
         let diskChart;
 
         // CPU Usage Chart
@@ -312,6 +327,113 @@
         memoryChart = new ApexCharts(document.querySelector("#memoryChart"), memoryOptions);
         memoryChart.render();
 
+        // Memory Used in Bytes Chart
+        fetch('/metrics')
+            .then(response => {
+                console.log('Raw response:', response);
+                return response.json();
+            })
+            .then(response => {
+                console.log('Parsed response:', response);
+                
+                if (!response.success) {
+                    throw new Error(response.message || response.error || 'Failed to fetch metrics');
+                }
+                
+                const data = response.data;
+                console.log('Metrics data:', {
+                    memory: {
+                        used: data.memory_bytes,
+                        total: data.memory_total,
+                        percent: data.memory
+                    },
+                    disk: data.disk
+                });
+                
+                // Memory Bytes Chart
+                const memoryBytesOptions = {
+                    series: [data.memory ? (data.memory * 100) : 0],
+                    chart: {
+                        type: 'radialBar',
+                        height: 350
+                    },
+                    plotOptions: {
+                        radialBar: {
+                            hollow: {
+                                size: '70%',
+                            },
+                            dataLabels: {
+                                show: true,
+                                name: {
+                                    show: true,
+                                    fontSize: '16px',
+                                    offsetY: -10
+                                },
+                                value: {
+                                    show: true,
+                                    fontSize: '30px',
+                                    offsetY: 5,
+                                    formatter: function () {
+                                        const used = data.memory_bytes || 0;
+                                        const total = data.memory_total || 0;
+                                        return `${formatBytes(used)} / ${formatBytes(total)}`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    labels: ['Memory Used']
+                };
+
+                // Disk Usage Chart
+                const diskOptions = {
+                    series: [data.disk.percent ? (data.disk.percent * 100) : 0],
+                    chart: {
+                        type: 'radialBar',
+                        height: 350
+                    },
+                    plotOptions: {
+                        radialBar: {
+                            hollow: {
+                                size: '70%',
+                            },
+                            dataLabels: {
+                                show: true,
+                                name: {
+                                    show: true,
+                                    fontSize: '16px',
+                                    offsetY: -10
+                                },
+                                value: {
+                                    show: true,
+                                    fontSize: '30px',
+                                    offsetY: 5,
+                                    formatter: function () {
+                                        const used = data.disk.used || 0;
+                                        const total = data.disk.total || 0;
+                                        return `${formatBytes(used)} / ${formatBytes(total)}`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    labels: ['Disk Usage']
+                };
+
+                // Render charts
+                const memoryBytesChart = new ApexCharts(document.querySelector("#memoryBytesChart"), memoryBytesOptions);
+                memoryBytesChart.render();
+
+                const diskChart = new ApexCharts(document.querySelector("#diskChart"), diskOptions);
+                diskChart.render();
+            })
+            .catch(error => {
+                console.error('Error fetching metrics:', error);
+                const errorMessage = '<div class="alert alert-danger">Failed to load metrics data: ' + error.message + '</div>';
+                document.querySelector("#memoryBytesChart").innerHTML = errorMessage;
+                document.querySelector("#diskChart").innerHTML = errorMessage;
+            });
+
         // HTTP Methods Chart
         const httpMethodData = @json($httpMethodStats['aggregations']['http_methods']['buckets'] ?? []);
         const httpMethodOptions = {
@@ -358,75 +480,6 @@
         };
         logLevelChart = new ApexCharts(document.querySelector("#logLevelChart"), logLevelOptions);
         logLevelChart.render();
-
-        // Disk Usage Chart
-        fetch('/metrics')
-            .then(response => response.json())
-            .then(data => {
-                const diskOptions = {
-                    series: [(data.aggregations?.disk_usage?.value ?? 0) * 100],
-                    chart: {
-                        type: 'radialBar',
-                        height: 350
-                    },
-                    plotOptions: {
-                        radialBar: {
-                            hollow: {
-                                size: '70%',
-                            },
-                            dataLabels: {
-                                show: true,
-                                name: {
-                                    show: true,
-                                    fontSize: '16px',
-                                    fontFamily: undefined,
-                                    color: undefined,
-                                    offsetY: -10
-                                },
-                                value: {
-                                    show: true,
-                                    fontSize: '30px',
-                                    fontFamily: undefined,
-                                    color: undefined,
-                                    offsetY: 5,
-                                    formatter: function (val) {
-                                        return val.toFixed(2) + '%';
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    labels: ['Disk Usage'],
-                    noData: {
-                        text: 'No Disk Usage Data Available'
-                    }
-                };
-                diskChart = new ApexCharts(document.querySelector("#diskChart"), diskOptions);
-                diskChart.render();
-            })
-            .catch(error => {
-                console.error('Error fetching metrics:', error);
-                const diskOptions = {
-                    series: [0],
-                    chart: {
-                        type: 'radialBar',
-                        height: 350
-                    },
-                    plotOptions: {
-                        radialBar: {
-                            hollow: {
-                                size: '70%',
-                            }
-                        }
-                    },
-                    labels: ['Disk Usage'],
-                    noData: {
-                        text: 'Error Loading Disk Usage Data'
-                    }
-                };
-                diskChart = new ApexCharts(document.querySelector("#diskChart"), diskOptions);
-                diskChart.render();
-            });
 
         // Timeline Chart
         const timelineData = @json($logs['hits']['hits'] ?? []);
@@ -506,17 +559,6 @@
             });
         }
 
-        realTimeSwitch.addEventListener('change', function() {
-            if (this.checked) {
-                console.log('Real-time updates activated');
-                updateDashboard(); // Panggil sekali saat diaktifkan
-                updateInterval = setInterval(updateDashboard, 1000); // Update setiap 1 detik
-            } else {
-                console.log('Real-time updates deactivated');
-                clearInterval(updateInterval);
-            }
-        });
-
         function updateTables(logs) {
             if (!logs || !Array.isArray(logs)) {
                 console.warn('No logs data received or invalid format');
@@ -589,20 +631,11 @@
         }
 
         function updateDashboard() {
-            console.log('Fetching new logs, lastTimestamp:', lastTimestamp);
+            if (!realTimeSwitch.checked) return;
             
             const url = '/api/logs' + (lastTimestamp ? `?after=${encodeURIComponent(lastTimestamp)}` : '');
-            console.log('Fetching URL:', url);
-
-            fetch(url, {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                credentials: 'same-origin'
-            })
+            
+            fetch(url)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -610,63 +643,183 @@
                 return response.json();
             })
             .then(data => {
-                console.log('Received data:', data);
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to fetch logs');
+                    }
                 
                 if (data.hits && data.hits.hits && data.hits.hits.length > 0) {
-                    console.log('New logs found:', data.hits.hits.length);
-                    
-                    // Update lastTimestamp dengan timestamp terbaru
+                        // Update lastTimestamp with the newest timestamp
                     const latestLog = data.hits.hits[0]._source;
                     if (latestLog && latestLog['@timestamp']) {
                         lastTimestamp = latestLog['@timestamp'];
-                        console.log('Updated lastTimestamp:', lastTimestamp);
                     }
 
-                    // Update tables
+                        // Update tables with new data
                     updateTables(data.hits.hits);
                     
-                    // Update charts jika fungsinya ada
-                    if (typeof updateHttpMethodsChart === 'function') {
+                        // Update charts
                         updateHttpMethodsChart(data);
-                    }
-                    if (typeof updateLogLevelsChart === 'function') {
                         updateLogLevelsChart(data);
-                    }
                 }
             })
             .catch(error => {
                 console.error('Error updating dashboard:', error);
-                
-                // Tampilkan pesan error yang lebih informatif
-                const errorMessage = error.message.includes('404') 
-                    ? 'Connection lost. Retrying in 5 seconds...'
-                    : 'Error updating dashboard. Please refresh the page.';
-                
-                const alertDiv = document.createElement('div');
-                alertDiv.className = 'alert alert-warning alert-dismissible fade show';
-                alertDiv.role = 'alert';
-                alertDiv.innerHTML = `
-                    ${errorMessage}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                `;
-                
-                const container = document.querySelector('.container-fluid');
-                if (container) {
-                    container.insertBefore(alertDiv, container.firstChild);
-                }
-
-                if (error.message.includes('404')) {
-                    setTimeout(() => {
-                        updateDashboard();
-                    }, 5000);
-                } else {
                     clearInterval(updateInterval);
-                    if (realTimeSwitch) {
-                        realTimeSwitch.checked = false;
-                    }
-                }
-            });
+                    realTimeSwitch.checked = false;
+                });
         }
+
+        // Real-time updates toggle
+        realTimeSwitch.addEventListener('change', function() {
+            if (this.checked) {
+                lastTimestamp = null; // Reset timestamp when starting
+                updateDashboard(); // Initial update
+                updateInterval = setInterval(updateDashboard, 5000); // Update every 5 seconds
+            } else {
+                clearInterval(updateInterval);
+            }
+        });
+
+        // Helper function untuk format bytes
+        function formatBytes(bytes, decimals = 2) {
+            if (!bytes || bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        function fetchMetrics() {
+            fetch('/metrics')
+                .then(response => response.json())
+                .then(response => {
+                    console.log('Raw metrics response:', response);
+                    
+                    if (!response.success) {
+                        throw new Error(response.message || response.error || 'Failed to fetch metrics');
+                    }
+
+                    const data = response.data;
+                    console.log('Parsed metrics data:', data);
+
+                    // Update CPU chart
+                    if (cpuChart && typeof data.cpu === 'number') {
+                        cpuChart.updateSeries([{
+                            name: 'CPU Usage',
+                            data: [[new Date().getTime(), Math.round(data.cpu * 100)]]
+                        }]);
+                    }
+
+                    // Update Memory chart
+                    if (memoryChart && typeof data.memory === 'number') {
+                        memoryChart.updateSeries([{
+                            name: 'Memory Usage',
+                            data: [[new Date().getTime(), Math.round(data.memory * 100)]]
+                        }]);
+                    }
+
+                    // Memory Bytes Chart Options
+                    const memoryBytesOptions = {
+                        series: [data.memory ? Math.round(data.memory * 100) : 0],
+                        chart: {
+                            type: 'radialBar',
+                            height: 350
+                        },
+                        plotOptions: {
+                            radialBar: {
+                                hollow: {
+                                    size: '70%',
+                                },
+                                dataLabels: {
+                                    show: true,
+                                    name: {
+                                        show: true,
+                                        fontSize: '16px',
+                                        offsetY: -10
+                                    },
+                                    value: {
+                                        show: true,
+                                        fontSize: '30px',
+                                        offsetY: 5,
+                                        formatter: function () {
+                                            const used = data.memory_bytes || 0;
+                                            const total = data.memory_total || 0;
+                                            return `${formatBytes(used)} / ${formatBytes(total)}`;
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        labels: ['Memory Used']
+                    };
+
+                    // Disk Chart Options
+                    const diskOptions = {
+                        series: [data.disk.percent ? Math.round(data.disk.percent * 100) : 0],
+                        chart: {
+                            type: 'radialBar',
+                            height: 350
+                        },
+                        plotOptions: {
+                            radialBar: {
+                                hollow: {
+                                    size: '70%',
+                                },
+                                dataLabels: {
+                                    show: true,
+                                    name: {
+                                        show: true,
+                                        fontSize: '16px',
+                                        offsetY: -10
+                                    },
+                                    value: {
+                                        show: true,
+                                        fontSize: '30px',
+                                        offsetY: 5,
+                                        formatter: function () {
+                                            const used = data.disk.used || 0;
+                                            const total = data.disk.total || 0;
+                                            return `${formatBytes(used)} / ${formatBytes(total)}`;
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        labels: ['Disk Usage']
+                    };
+
+                    // Update or Create Memory Bytes Chart
+                    if (memoryBytesChart) {
+                        memoryBytesChart.updateSeries([data.memory ? Math.round(data.memory * 100) : 0]);
+                    } else {
+                        memoryBytesChart = new ApexCharts(document.querySelector("#memoryBytesChart"), memoryBytesOptions);
+                        memoryBytesChart.render();
+                    }
+
+                    // Update or Create Disk Chart
+                    if (diskChart) {
+                        diskChart.updateSeries([data.disk.percent ? Math.round(data.disk.percent * 100) : 0]);
+                    } else {
+                        diskChart = new ApexCharts(document.querySelector("#diskChart"), diskOptions);
+                        diskChart.render();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching metrics:', error);
+                    const errorDiv = document.getElementById('metrics-error');
+                    if (errorDiv) {
+                        errorDiv.textContent = `Error: ${error.message}`;
+                    }
+                });
+        }
+
+        // Fetch metrics immediately and then every 5 seconds
+        fetchMetrics();
+        setInterval(fetchMetrics, 5000);
     });
     </script>
 

@@ -38,7 +38,26 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/logs/{filename}', [LogController::class, 'showLogs']);
     
     // API routes
-    Route::get('/api/logs', [DashboardController::class, 'getLogs']);
+    Route::get('/api/logs', [DashboardController::class, 'getRecentLogs']);
     Route::get('/api/metrics', [DashboardController::class, 'getMetrics']);
     Route::get('/api/log-stats', [DashboardController::class, 'getLogStats']);
+    Route::get('/metrics', [DashboardController::class, 'getMetrics'])->name('metrics');
+});
+
+// Test Elasticsearch connection
+Route::get('/test-es', function() {
+    try {
+        $response = app('elasticsearch')->info();
+        return response()->json([
+            'success' => true,
+            'message' => 'Connected to Elasticsearch',
+            'info' => $response
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to connect to Elasticsearch',
+            'error' => $e->getMessage()
+        ], 500);
+    }
 });
