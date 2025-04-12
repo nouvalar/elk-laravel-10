@@ -64,20 +64,6 @@
                     </div>
 
                     <div class="row">
-                        <!-- Memory Used in Bytes -->
-                        <div class="col-xl-4 col-lg-4">
-                            <div class="card mb-4">
-                                <div class="card-header">
-                                    <h6 class="m-0 font-weight-bold text-primary">Memory Used in Bytes</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div id="memoryBytesChart"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
                         <!-- HTTP Methods Chart -->
                         <div class="col-xl-4 col-lg-4">
                             <div class="card mb-4">
@@ -102,14 +88,14 @@
                             </div>
                         </div>
 
-                        <!-- Disk Usage Chart -->
+                        <!-- Memory Used in Bytes -->
                         <div class="col-xl-4 col-lg-4">
                             <div class="card mb-4">
                                 <div class="card-header">
-                                    <h6 class="m-0 font-weight-bold text-primary">Disk Usage</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary">Memory Used in Bytes</h6>
                                 </div>
                                 <div class="card-body">
-                                    <div id="diskChart"></div>
+                                    <div id="memoryBytesChart"></div>
                                 </div>
                             </div>
                         </div>
@@ -171,18 +157,18 @@
                                                             <td>{{ Str::limit($log['_source']['message'] ?? 'N/A', 100) }}</td>
                                                             <td>
                                                                 <span class="badge bg-{{ 
-                                                                    isset($log['_source']['loglevel']) ? 
-                                                                        (strtoupper($log['_source']['loglevel']) == 'ERROR' ? 'danger' : 
-                                                                        (strtoupper($log['_source']['loglevel']) == 'WARNING' ? 'warning' : 
-                                                                        (strtoupper($log['_source']['loglevel']) == 'INFO' ? 'info' : 'secondary'))) 
+                                                                    isset($log['_source']['log']['level']) ? 
+                                                                        (strtoupper($log['_source']['log']['level']) == 'ERROR' ? 'danger' : 
+                                                                        (strtoupper($log['_source']['log']['level']) == 'WARNING' ? 'warning' : 
+                                                                        (strtoupper($log['_source']['log']['level']) == 'INFO' ? 'info' : 'secondary'))) 
                                                                     : 'secondary' 
                                                                 }}">
-                                                                    {{ $log['_source']['loglevel'] ?? 'N/A' }}
+                                                                    {{ $log['_source']['log']['level'] ?? 'N/A' }}
                                                                 </span>
                                                             </td>
-                                                            <td>{{ $log['_source']['http_method'] ?? 'N/A' }}</td>
-                                                            <td>{{ $log['_source']['client_ip'] ?? 'N/A' }}</td>
-                                                            <td>{{ $log['_source']['request_url'] ?? 'N/A' }}</td>
+                                                            <td>{{ $log['_source']['http']['request']['method'] ?? 'N/A' }}</td>
+                                                            <td>{{ $log['_source']['client']['ip'] ?? 'N/A' }}</td>
+                                                            <td>{{ $log['_source']['url']['original'] ?? 'N/A' }}</td>
                                                         </tr>
                                                         @empty
                                                         <tr>
@@ -272,29 +258,54 @@
                 name: 'CPU Usage',
                 data: cpuData.map(item => ({
                     x: new Date(item.key),
-                    y: ((item.cpu?.value ?? 0) * 100).toFixed(2)
-                }))
+                    y: parseFloat((item.cpu?.value ?? 0) * 100).toFixed(2)
+                })).filter(item => !isNaN(item.y) && item.y <= 100)
             }],
             chart: {
                 type: 'line',
-                height: 350
+                height: 350,
+                animations: {
+                    enabled: true
+                },
+                toolbar: {
+                    show: true
+                }
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 2
             },
             xaxis: {
-                type: 'datetime'
+                type: 'datetime',
+                labels: {
+                    datetimeUTC: false,
+                    format: 'HH:mm:ss'
+                }
             },
             yaxis: {
+                min: 0,
+                max: 100,
+                tickAmount: 5,
                 labels: {
                     formatter: function(val) {
                         return val.toFixed(2) + '%';
                     }
                 }
             },
+            tooltip: {
+                x: {
+                    format: 'HH:mm:ss'
+                }
+            },
             noData: {
                 text: 'No CPU Usage Data Available'
             }
         };
-        cpuChart = new ApexCharts(document.querySelector("#cpuChart"), cpuOptions);
-        cpuChart.render();
+
+        if (document.querySelector("#cpuChart")) {
+            cpuChart = new ApexCharts(document.querySelector("#cpuChart"), cpuOptions);
+            cpuChart.render();
+        }
 
         // Memory Usage Chart
         const memoryData = @json($metricbeat['aggregations']['memory_usage']['buckets'] ?? []);
@@ -303,136 +314,150 @@
                 name: 'Memory Usage',
                 data: memoryData.map(item => ({
                     x: new Date(item.key),
-                    y: ((item.memory?.value ?? 0) * 100).toFixed(2)
-                }))
+                    y: parseFloat((item.memory?.value ?? 0) * 100).toFixed(2)
+                })).filter(item => !isNaN(item.y) && item.y <= 100)
             }],
             chart: {
                 type: 'line',
-                height: 350
+                height: 350,
+                animations: {
+                    enabled: true
+                },
+                toolbar: {
+                    show: true
+                }
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 2
             },
             xaxis: {
-                type: 'datetime'
+                type: 'datetime',
+                labels: {
+                    datetimeUTC: false,
+                    format: 'HH:mm:ss'
+                }
             },
             yaxis: {
+                min: 0,
+                max: 100,
+                tickAmount: 5,
                 labels: {
                     formatter: function(val) {
                         return val.toFixed(2) + '%';
                     }
                 }
             },
+            tooltip: {
+                x: {
+                    format: 'HH:mm:ss'
+                }
+            },
             noData: {
                 text: 'No Memory Usage Data Available'
             }
         };
-        memoryChart = new ApexCharts(document.querySelector("#memoryChart"), memoryOptions);
-        memoryChart.render();
+
+        if (document.querySelector("#memoryChart")) {
+            memoryChart = new ApexCharts(document.querySelector("#memoryChart"), memoryOptions);
+            memoryChart.render();
+        }
 
         // Memory Used in Bytes Chart
-        fetch('/metrics')
-            .then(response => {
-                console.log('Raw response:', response);
-                return response.json();
-            })
-            .then(response => {
-                console.log('Parsed response:', response);
-                
-                if (!response.success) {
-                    throw new Error(response.message || response.error || 'Failed to fetch metrics');
-                }
-                
-                const data = response.data;
-                console.log('Metrics data:', {
-                    memory: {
-                        used: data.memory_bytes,
-                        total: data.memory_total,
-                        percent: data.memory
-                    },
-                    disk: data.disk
-                });
-                
-                // Memory Bytes Chart
-                const memoryBytesOptions = {
-                    series: [data.memory ? (data.memory * 100) : 0],
-                    chart: {
-                        type: 'radialBar',
-                        height: 350
-                    },
-                    plotOptions: {
-                        radialBar: {
-                            hollow: {
-                                size: '70%',
-                            },
-                            dataLabels: {
+        function initializeMemoryBytesChart(data) {
+            if (!document.querySelector("#memoryBytesChart")) return;
+
+            const memoryPercent = data.memory || 0;
+            const memoryBytesOptions = {
+                series: [Math.min(memoryPercent, 100)],
+                chart: {
+                    type: 'radialBar',
+                    height: 350
+                },
+                plotOptions: {
+                    radialBar: {
+                        hollow: {
+                            size: '70%',
+                        },
+                        dataLabels: {
+                            show: true,
+                            name: {
                                 show: true,
-                                name: {
-                                    show: true,
-                                    fontSize: '16px',
-                                    offsetY: -10
-                                },
-                                value: {
-                                    show: true,
-                                    fontSize: '30px',
-                                    offsetY: 5,
-                                    formatter: function () {
-                                        const used = data.memory_bytes || 0;
-                                        const total = data.memory_total || 0;
-                                        return `${formatBytes(used)} / ${formatBytes(total)}`;
-                                    }
+                                fontSize: '16px',
+                                offsetY: -10
+                            },
+                            value: {
+                                show: true,
+                                fontSize: '30px',
+                                offsetY: 5,
+                                formatter: function () {
+                                    const used = data.memory_bytes || 0;
+                                    const total = data.memory_total || 0;
+                                    return `${formatBytes(used)} / ${formatBytes(total)}`;
                                 }
                             }
                         }
-                    },
-                    labels: ['Memory Used']
-                };
+                    }
+                },
+                labels: ['Memory Used']
+            };
 
-                // Disk Usage Chart
-                const diskOptions = {
-                    series: [data.disk.percent ? (data.disk.percent * 100) : 0],
-                    chart: {
-                        type: 'radialBar',
-                        height: 350
-                    },
-                    plotOptions: {
-                        radialBar: {
-                            hollow: {
-                                size: '70%',
-                            },
-                            dataLabels: {
-                                show: true,
-                                name: {
-                                    show: true,
-                                    fontSize: '16px',
-                                    offsetY: -10
-                                },
-                                value: {
-                                    show: true,
-                                    fontSize: '30px',
-                                    offsetY: 5,
-                                    formatter: function () {
-                                        const used = data.disk.used || 0;
-                                        const total = data.disk.total || 0;
-                                        return `${formatBytes(used)} / ${formatBytes(total)}`;
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    labels: ['Disk Usage']
-                };
-
-                // Render charts
-                const memoryBytesChart = new ApexCharts(document.querySelector("#memoryBytesChart"), memoryBytesOptions);
+            if (memoryBytesChart) {
+                memoryBytesChart.updateOptions(memoryBytesOptions);
+            } else {
+                memoryBytesChart = new ApexCharts(document.querySelector("#memoryBytesChart"), memoryBytesOptions);
                 memoryBytesChart.render();
+            }
+        }
 
-                const diskChart = new ApexCharts(document.querySelector("#diskChart"), diskOptions);
-                diskChart.render();
-            })
-            .catch(error => {
-                console.error('Error fetching metrics:', error);
-                const errorMessage = '<div class="alert alert-danger">Failed to load metrics data: ' + error.message + '</div>';
-                document.querySelector("#memoryBytesChart").innerHTML = errorMessage;
-                document.querySelector("#diskChart").innerHTML = errorMessage;
-            });
+        // Fetch metrics and initialize charts
+        function updateMetrics() {
+            fetch('/metrics')
+                .then(response => response.json())
+                .then(response => {
+                    if (!response.success) {
+                        throw new Error(response.message || response.error || 'Failed to fetch metrics');
+                    }
+
+                    const data = response.data;
+                    console.log('Metrics data:', data);
+
+                    // Update CPU chart if it exists
+                    if (cpuChart) {
+                        const cpuPercent = Math.min(data.cpu || 0, 100);
+                        cpuChart.updateSeries([{
+                            name: 'CPU Usage',
+                            data: [[new Date().getTime(), cpuPercent]]
+                        }]);
+                    }
+
+                    // Update Memory chart if it exists
+                    if (memoryChart) {
+                        const memoryPercent = Math.min(data.memory || 0, 100);
+                        memoryChart.updateSeries([{
+                            name: 'Memory Usage',
+                            data: [[new Date().getTime(), memoryPercent]]
+                        }]);
+                    }
+
+                    // Initialize or update Memory Bytes chart
+                    initializeMemoryBytesChart(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching metrics:', error);
+                    const errorMessage = '<div class="alert alert-danger">Failed to load metrics data: ' + error.message + '</div>';
+                    const memoryBytesElement = document.querySelector("#memoryBytesChart");
+                    if (memoryBytesElement) {
+                        memoryBytesElement.innerHTML = errorMessage;
+                    }
+                });
+        }
+
+        // Initial update
+        updateMetrics();
+
+        // Update every 5 seconds
+        setInterval(updateMetrics, 5000);
 
         // HTTP Methods Chart
         const httpMethodData = @json($httpMethodStats['aggregations']['http_methods']['buckets'] ?? []);
@@ -692,134 +717,6 @@
             
             return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
         }
-
-        function fetchMetrics() {
-            fetch('/metrics')
-                .then(response => response.json())
-                .then(response => {
-                    console.log('Raw metrics response:', response);
-                    
-                    if (!response.success) {
-                        throw new Error(response.message || response.error || 'Failed to fetch metrics');
-                    }
-
-                    const data = response.data;
-                    console.log('Parsed metrics data:', data);
-
-                    // Update CPU chart
-                    if (cpuChart && typeof data.cpu === 'number') {
-                        cpuChart.updateSeries([{
-                            name: 'CPU Usage',
-                            data: [[new Date().getTime(), Math.round(data.cpu * 100)]]
-                        }]);
-                    }
-
-                    // Update Memory chart
-                    if (memoryChart && typeof data.memory === 'number') {
-                        memoryChart.updateSeries([{
-                            name: 'Memory Usage',
-                            data: [[new Date().getTime(), Math.round(data.memory * 100)]]
-                        }]);
-                    }
-
-                    // Memory Bytes Chart Options
-                    const memoryBytesOptions = {
-                        series: [data.memory ? Math.round(data.memory * 100) : 0],
-                        chart: {
-                            type: 'radialBar',
-                            height: 350
-                        },
-                        plotOptions: {
-                            radialBar: {
-                                hollow: {
-                                    size: '70%',
-                                },
-                                dataLabels: {
-                                    show: true,
-                                    name: {
-                                        show: true,
-                                        fontSize: '16px',
-                                        offsetY: -10
-                                    },
-                                    value: {
-                                        show: true,
-                                        fontSize: '30px',
-                                        offsetY: 5,
-                                        formatter: function () {
-                                            const used = data.memory_bytes || 0;
-                                            const total = data.memory_total || 0;
-                                            return `${formatBytes(used)} / ${formatBytes(total)}`;
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        labels: ['Memory Used']
-                    };
-
-                    // Disk Chart Options
-                    const diskOptions = {
-                        series: [data.disk.percent ? Math.round(data.disk.percent * 100) : 0],
-                        chart: {
-                            type: 'radialBar',
-                            height: 350
-                        },
-                        plotOptions: {
-                            radialBar: {
-                                hollow: {
-                                    size: '70%',
-                                },
-                                dataLabels: {
-                                    show: true,
-                                    name: {
-                                        show: true,
-                                        fontSize: '16px',
-                                        offsetY: -10
-                                    },
-                                    value: {
-                                        show: true,
-                                        fontSize: '30px',
-                                        offsetY: 5,
-                                        formatter: function () {
-                                            const used = data.disk.used || 0;
-                                            const total = data.disk.total || 0;
-                                            return `${formatBytes(used)} / ${formatBytes(total)}`;
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        labels: ['Disk Usage']
-                    };
-
-                    // Update or Create Memory Bytes Chart
-                    if (memoryBytesChart) {
-                        memoryBytesChart.updateSeries([data.memory ? Math.round(data.memory * 100) : 0]);
-                    } else {
-                        memoryBytesChart = new ApexCharts(document.querySelector("#memoryBytesChart"), memoryBytesOptions);
-                        memoryBytesChart.render();
-                    }
-
-                    // Update or Create Disk Chart
-                    if (diskChart) {
-                        diskChart.updateSeries([data.disk.percent ? Math.round(data.disk.percent * 100) : 0]);
-                    } else {
-                        diskChart = new ApexCharts(document.querySelector("#diskChart"), diskOptions);
-                        diskChart.render();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching metrics:', error);
-                    const errorDiv = document.getElementById('metrics-error');
-                    if (errorDiv) {
-                        errorDiv.textContent = `Error: ${error.message}`;
-                    }
-                });
-        }
-
-        // Fetch metrics immediately and then every 5 seconds
-        fetchMetrics();
-        setInterval(fetchMetrics, 5000);
     });
     </script>
 

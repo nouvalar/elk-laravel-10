@@ -57,7 +57,7 @@ class DashboardController extends Controller
     private function fetchMetricbeatData()
     {
         return Elasticsearch::search([
-            'index' => '.ds-metricbeat-8.17.4-*',
+            'index' => 'metricbeat-*',
             'body' => [
                 'size' => 0,
                 'query' => [
@@ -89,7 +89,7 @@ class DashboardController extends Controller
                         'aggs' => [
                             'memory' => [
                                 'avg' => [
-                                    'field' => 'docker.container.memory.usage.pct'
+                                    'field' => 'system.memory.actual.used.pct'
                                 ]
                             ]
                         ]
@@ -109,7 +109,7 @@ class DashboardController extends Controller
                     '@timestamp' => ['order' => 'desc']
                 ],
                 '_source' => [
-                    '@timestamp', 'message', 'loglevel', 'http_method', 'client_ip', 'request_url'
+                    '@timestamp', 'message', 'log.level', 'http.request.method', 'client.ip', 'url.original'
                 ]
             ]
         ])->asArray();
@@ -124,13 +124,13 @@ class DashboardController extends Controller
                 'aggs' => [
                     'http_methods' => [
                         'terms' => [
-                            'field' => 'http_method.keyword',
+                            'field' => 'http.request.method.keyword',
                             'size' => 10
                         ]
                     ],
                     'log_levels' => [
                         'terms' => [
-                            'field' => 'loglevel.keyword',
+                            'field' => 'log.level.keyword',
                             'size' => 10
                         ]
                     ]
@@ -145,7 +145,7 @@ class DashboardController extends Controller
             Log::info('Fetching metrics from Elasticsearch');
 
             $metrics = Elasticsearch::search([
-                'index' => 'metricbeat-8.17.4',
+                'index' => 'metricbeat-*',
                 'body' => [
                     'size' => 1,
                     'sort' => [
@@ -164,16 +164,11 @@ class DashboardController extends Controller
                     ],
                     '_source' => [
                         '@timestamp',
-                        'system.cpu.user.norm.pct',
-                        'system.cpu.system.norm.pct',
+                        'system.cpu.total.pct',
                         'system.memory.actual.used.bytes',
                         'system.memory.actual.used.pct',
-                        'system.memory.actual.free',
                         'system.memory.total',
-                        'system.memory.used.bytes',
-                        'system.memory.used.pct',
-                        'system.fsstat.total_size.total',
-                        'system.fsstat.total_size.used'
+                        'system.memory.free'
                     ]
                 ]
             ])->asArray();
@@ -195,36 +190,37 @@ class DashboardController extends Controller
             $memoryTotal = $memoryMetrics['total'] ?? 0;
             $memoryUsed = $memoryMetrics['actual']['used']['bytes'] ?? 0;
             $memoryPercent = $memoryMetrics['actual']['used']['pct'] ?? 0;
-            $memoryFree = $memoryMetrics['actual']['free'] ?? 0;
+            $memoryFree = $memoryMetrics['free'] ?? 0;
 
-            // Get filesystem metrics from fsstat
-            $fsstat = $system['fsstat'] ?? [];
-            $diskTotal = $fsstat['total_size']['total'] ?? 0;
-            $diskUsed = $fsstat['total_size']['used'] ?? 0;
-            $diskPercent = $diskTotal > 0 ? ($diskUsed / $diskTotal) : 0;
+            // Calculate memory percentage if not available or incorrect
+            if ($memoryTotal > 0) {
+                $memoryPercent = ($memoryUsed / $memoryTotal);
+            }
 
-            // Get CPU percentage (user + system)
-            $cpuUser = $system['cpu']['user']['norm']['pct'] ?? 0;
-            $cpuSystem = $system['cpu']['system']['norm']['pct'] ?? 0;
-            $cpuTotal = $cpuUser + $cpuSystem;
+            // Ensure memory percentage is between 0 and 1
+            $memoryPercent = max(0, min(1, $memoryPercent));
+
+            // Get CPU percentage
+            $cpuTotal = $system['cpu']['total']['pct'] ?? 0;
+
+            // Ensure CPU percentage is between 0 and 1
+            $cpuTotal = max(0, min(1, $cpuTotal));
+
+            // Format memory values for human readability
+            $memoryUsedFormatted = $this->formatBytes($memoryUsed);
+            $memoryTotalFormatted = $this->formatBytes($memoryTotal);
+            $memoryFreeFormatted = $this->formatBytes($memoryFree);
 
             // Log extracted values for debugging
             Log::info('Extracted metrics:', [
                 'memory' => [
-                    'total' => $memoryTotal,
-                    'used' => $memoryUsed,
-                    'percent' => $memoryPercent,
-                    'free' => $memoryFree
-                ],
-                'disk' => [
-                    'total' => $diskTotal,
-                    'used' => $diskUsed,
-                    'percent' => $diskPercent
+                    'total' => $memoryTotalFormatted,
+                    'used' => $memoryUsedFormatted,
+                    'percent' => $memoryPercent * 100,
+                    'free' => $memoryFreeFormatted
                 ],
                 'cpu' => [
-                    'user' => $cpuUser,
-                    'system' => $cpuSystem,
-                    'total' => $cpuTotal
+                    'total' => $cpuTotal * 100
                 ]
             ]);
 
@@ -232,15 +228,15 @@ class DashboardController extends Controller
                 'success' => true,
                 'timestamp' => $latest['@timestamp'],
                 'data' => [
-                    'cpu' => $cpuTotal,
-                    'memory' => $memoryPercent,
+                    'cpu' => $cpuTotal * 100,
+                    'memory' => $memoryPercent * 100,
                     'memory_bytes' => $memoryUsed,
                     'memory_total' => $memoryTotal,
                     'memory_free' => $memoryFree,
-                    'disk' => [
-                        'used' => $diskUsed,
-                        'total' => $diskTotal,
-                        'percent' => $diskPercent
+                    'memory_formatted' => [
+                        'used' => $memoryUsedFormatted,
+                        'total' => $memoryTotalFormatted,
+                        'free' => $memoryFreeFormatted
                     ]
                 ]
             ];
@@ -253,9 +249,34 @@ class DashboardController extends Controller
 
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to fetch metrics data: ' . $e->getMessage()
+                'error' => 'Failed to fetch metrics data: ' . $e->getMessage(),
+                'data' => [
+                    'cpu' => 0,
+                    'memory' => 0,
+                    'memory_bytes' => 0,
+                    'memory_total' => 0,
+                    'memory_free' => 0,
+                    'memory_formatted' => [
+                        'used' => '0 B',
+                        'total' => '0 B',
+                        'free' => '0 B'
+                    ]
+                ]
             ], 500);
         }
+    }
+
+    private function formatBytes($bytes, $precision = 2)
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        
+        $bytes /= pow(1024, $pow);
+        
+        return round($bytes, $precision) . ' ' . $units[$pow];
     }
 
     public function getLogs(Request $request)
