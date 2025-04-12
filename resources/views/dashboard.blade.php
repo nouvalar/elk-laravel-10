@@ -157,18 +157,18 @@
                                                             <td>{{ Str::limit($log['_source']['message'] ?? 'N/A', 100) }}</td>
                                                             <td>
                                                                 <span class="badge bg-{{ 
-                                                                    isset($log['_source']['log']['level']) ? 
-                                                                        (strtoupper($log['_source']['log']['level']) == 'ERROR' ? 'danger' : 
-                                                                        (strtoupper($log['_source']['log']['level']) == 'WARNING' ? 'warning' : 
-                                                                        (strtoupper($log['_source']['log']['level']) == 'INFO' ? 'info' : 'secondary'))) 
+                                                                    isset($log['_source']['loglevel']) ? 
+                                                                        (strtoupper($log['_source']['loglevel']) == 'ERROR' ? 'danger' : 
+                                                                        (strtoupper($log['_source']['loglevel']) == 'WARNING' ? 'warning' : 
+                                                                        (strtoupper($log['_source']['loglevel']) == 'INFO' ? 'info' : 'secondary'))) 
                                                                     : 'secondary' 
                                                                 }}">
-                                                                    {{ $log['_source']['log']['level'] ?? 'N/A' }}
+                                                                    {{ $log['_source']['loglevel'] ?? 'N/A' }}
                                                                 </span>
                                                             </td>
-                                                            <td>{{ $log['_source']['http']['request']['method'] ?? 'N/A' }}</td>
-                                                            <td>{{ $log['_source']['client']['ip'] ?? 'N/A' }}</td>
-                                                            <td>{{ $log['_source']['url']['original'] ?? 'N/A' }}</td>
+                                                            <td>{{ $log['_source']['http_method'] ?? 'N/A' }}</td>
+                                                            <td>{{ $log['_source']['client_ip'] ?? 'N/A' }}</td>
+                                                            <td>{{ $log['_source']['request_url'] ?? 'N/A' }}</td>
                                                         </tr>
                                                         @empty
                                                         <tr>
@@ -549,7 +549,7 @@
         let lastTimestamp = null;
 
         function updateHttpMethodsChart(data) {
-            if (!httpMethodChart) return;
+            if (!data.hits || !data.hits.hits) return;
             
             const methodCounts = {};
             data.hits.hits.forEach(log => {
@@ -560,14 +560,16 @@
             const series = Object.values(methodCounts);
             const labels = Object.keys(methodCounts);
 
-            httpMethodChart.updateSeries(series);
-            httpMethodChart.updateOptions({
-                labels: labels
-            });
+            if (httpMethodChart) {
+                httpMethodChart.updateSeries(series);
+                httpMethodChart.updateOptions({
+                    labels: labels
+                });
+            }
         }
 
         function updateLogLevelsChart(data) {
-            if (!logLevelChart) return;
+            if (!data.hits || !data.hits.hits) return;
             
             const levelCounts = {};
             data.hits.hits.forEach(log => {
@@ -578,10 +580,12 @@
             const series = Object.values(levelCounts);
             const labels = Object.keys(levelCounts);
 
-            logLevelChart.updateSeries(series);
-            logLevelChart.updateOptions({
-                labels: labels
-            });
+            if (logLevelChart) {
+                logLevelChart.updateSeries(series);
+                logLevelChart.updateOptions({
+                    labels: labels
+                });
+            }
         }
 
         function updateTables(logs) {

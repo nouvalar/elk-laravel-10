@@ -109,7 +109,12 @@ class DashboardController extends Controller
                     '@timestamp' => ['order' => 'desc']
                 ],
                 '_source' => [
-                    '@timestamp', 'message', 'log.level', 'http.request.method', 'client.ip', 'url.original'
+                    '@timestamp',
+                    'message',
+                    'loglevel',
+                    'http_method',
+                    'client_ip',
+                    'request_url'
                 ]
             ]
         ])->asArray();
@@ -124,13 +129,13 @@ class DashboardController extends Controller
                 'aggs' => [
                     'http_methods' => [
                         'terms' => [
-                            'field' => 'http.request.method.keyword',
+                            'field' => 'http_method.keyword',
                             'size' => 10
                         ]
                     ],
                     'log_levels' => [
                         'terms' => [
-                            'field' => 'log.level.keyword',
+                            'field' => 'loglevel.keyword',
                             'size' => 10
                         ]
                     ]
@@ -331,6 +336,14 @@ class DashboardController extends Controller
                     'size' => 100,
                     'sort' => [
                         '@timestamp' => ['order' => 'desc']
+                    ],
+                    '_source' => [
+                        '@timestamp',
+                        'message',
+                        'loglevel',
+                        'http_method',
+                        'client_ip',
+                        'request_url'
                     ]
                 ]
             ];
